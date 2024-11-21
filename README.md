@@ -24,14 +24,50 @@ Created a simple Docker containerized Python application with automated security
    - File: `helloworld.py`  
    - Content: `print("Hello world")`  
 
-2. **Docker Configuration**  
+2. **Snykscan.yaml and Dockerfile Configuration**  
 
-   ```dockerfile
-   FROM python:3.11-slim-bookworm
-   WORKDIR /app
-   COPY python/helloworld.py .
-   CMD ["python", "helloworld.py"]
-   ```
+**snykscan.yaml**  
+
+```yaml
+name: Snyk Container Security Scan
+
+on:
+push:
+    branches: [ "main" ]
+pull_request:
+    branches: [ "main" ]
+
+jobs:
+snyk-scan:
+    runs-on: ubuntu-latest
+    steps:
+    # Get the code
+    - name: Checkout code
+        uses: actions/checkout@v4
+
+    # Build using your Python Dockerfile
+    - name: Build Docker image
+        run: docker build -t python-hello:${{ github.sha }} -f Dockerfile .
+
+    # Scan the built image with Snyk
+    - name: Run Snyk Container Scan
+        uses: snyk/actions/docker@master
+        env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+        image: python-hello:${{ github.sha }}
+        args: --file=Dockerfile --severity-threshold=medium
+        continue-on-error: true  # Don't fail on low severity issues
+```
+
+**Dockerfile**  
+
+```dockerfile
+FROM python:3.11-slim-bookworm
+WORKDIR /app
+COPY python/helloworld.py .
+CMD ["python", "helloworld.py"]
+```
 
 3. **GitHub Actions Workflow**  
    - Implemented automated Snyk security scanning  
